@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, ShieldEllipsis, X } from "lucide-react";
-import { AUTH_LINKS, NAV_SECTIONS } from "@/lib/navigation";
+import { LogOut, X } from "lucide-react";
+import { useAccess } from "@/lib/access";
+import { visibleNavSections } from "@/lib/navigation";
 import { cn } from "@/utils/cn";
 import { Logo } from "./Logo";
 import { TricolorBar } from "@/components/ui/TricolorBar";
@@ -18,6 +19,7 @@ interface SidebarProps {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const sections = visibleNavSections(useAccess());
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -29,7 +31,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="Navegación principal">
-        {NAV_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.title}>
             <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
               {section.title}
@@ -67,24 +69,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </ul>
           </div>
         ))}
-
-        <div>
-          <p className="mb-2 flex items-center gap-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-            <ShieldEllipsis className="size-3.5" /> Autenticación (demo UI)
-          </p>
-          <ul className="space-y-0.5">
-            {AUTH_LINKS.map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  className="block rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
-                >
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
       </nav>
 
       <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">

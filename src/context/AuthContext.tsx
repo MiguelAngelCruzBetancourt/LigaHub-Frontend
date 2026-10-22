@@ -13,7 +13,6 @@ import {
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/auth";
 import { ApiError, configureHttp } from "@/lib/api/http";
-import { usersApi } from "@/lib/api/users";
 import { decodeJwtPayload } from "@/lib/jwt";
 
 const STORAGE_KEY = "futbol-admin-session";
@@ -27,12 +26,22 @@ interface StoredSession {
   email: string;
 }
 
-/** Usuario de la sesión. `roleNames` queda vacío si el rol no puede consultarlo. */
+/** Permiso efectivo del usuario (viene de GET /api/auth/me). */
+export interface SessionPermission {
+  method: string;
+  url: string;
+  model: string;
+}
+
+/** Usuario de la sesión. Si /api/auth/me falla, `permissions` queda vacío y no se muestra ningún módulo. */
 export interface SessionUser {
   id: string;
   name: string;
   email: string;
+  /** Data-URL de la foto de perfil; vive solo en memoria. */
+  photoUrl?: string;
   roleNames: string[];
+  permissions: SessionPermission[];
 }
 
 interface AuthContextValue {
@@ -43,6 +52,8 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => void;
+  /** Vuelve a consultar /api/auth/me (foto, nombre, roles y permisos). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -122,32 +133,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * El login solo devuelve el token, así que el usuario se arma con los claims
-   * (`sub`, `email`) y se completa con el backend. `detail-with-roles` puede dar
-   * 403 según el rol, y en ese caso se cae al endpoint simple.
+   * El login solo devuelve el token, así que el usuario se completa con
+   * GET /api/auth/me, que no depende de ningún permiso del rol. Si falla por
+   * otra causa que un 401, la sesión sigue viva con los datos del token.
    */
   const hydrateUser = useCallback(async (stored: StoredSession): Promise<SessionUser> => {
-    const numericId = Number(stored.userId);
-
     try {
-      const detail = await usersApi.findByIdWithRoles(numericId);
+      const me = await authApi.me();
       return {
-        id: String(detail.id),
-        name: detail.name,
-        email: detail.email,
-        roleNames: detail.roles.map((link) => link.role.name),
+        id: String(me.id),
+        name: me.name,
+        email: me.email,
+        photoUrl: me.photoUrl ?? undefined,
+        roleNames: me.roles,
+        permissions: me.permissions.map(({ method, url, model }) => ({ method, url, model })),
       };
     } catch (error) {
       if (error instanceof ApiError && error.isUnauthorized) throw error;
-
-      try {
-        const basic = await usersApi.findById(numericId);
-        return { id: String(basic.id), name: basic.name, email: basic.email, roleNames: [] };
-      } catch (innerError) {
-        if (innerError instanceof ApiError && innerError.isUnauthorized) throw innerError;
-        // Sin permiso para leerse a sí mismo: la sesión sigue siendo válida.
-        return { id: stored.userId, name: stored.email, email: stored.email, roleNames: [] };
-      }
+      return { id: stored.userId, name: stored.email, email: stored.email, roleNames: [], permissions: [] };
     }
   }, []);
 
@@ -205,6 +208,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [hydrateUser],
   );
 
+  const refreshUser = useCallback(async () => {
+    if (!session) return;
+    try {
+      setUser(await hydrateUser(session));
+    } catch {
+      // Un 401 ya cierra la sesión desde http.ts; otro fallo conserva el usuario actual.
+    }
+  }, [session, hydrateUser]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -213,8 +225,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       logout,
+      refreshUser,
     }),
-    [user, session, loading, login, logout],
+    [user, session, loading, login, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

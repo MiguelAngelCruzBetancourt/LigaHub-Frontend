@@ -16,6 +16,35 @@ interface ProfileFormProps {
   onSave: (patch: { phone: string; birthDate: string; avatarUrl?: string }) => void | Promise<void>;
 }
 
+const MAX_PHOTO_SIDE = 400;
+
+/** Reduce la imagen (lado máx. 400 px) y la devuelve como data-URL JPEG liviana. */
+function resizeToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_PHOTO_SIDE / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      const context = canvas.getContext("2d");
+      if (!context) return reject(new Error("canvas"));
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image"));
+    };
+
+    image.src = url;
+  });
+}
+
 /** Formulario de perfil: teléfono, fecha de nacimiento y fotografía. */
 export function ProfileForm({ user, birthDate: initialBirthDate, onSave }: ProfileFormProps) {
   const [phone, setPhone] = useState(user.phone);
@@ -46,10 +75,11 @@ export function ProfileForm({ user, birthDate: initialBirthDate, onSave }: Profi
       return;
     }
     setError(undefined);
-    // Vista previa local: no se sube a ningún servidor.
-    const reader = new FileReader();
-    reader.onload = () => setAvatarUrl(reader.result as string);
-    reader.readAsDataURL(file);
+    // La imagen se reduce y se guarda en el perfil como data-URL.
+    resizeToDataUrl(file)
+      .then(setAvatarUrl)
+      .catch(() => setError("No se pudo leer la imagen. Prueba con otro archivo."));
+    e.target.value = "";
   };
 
   const handleSubmit = async (e: FormEvent) => {

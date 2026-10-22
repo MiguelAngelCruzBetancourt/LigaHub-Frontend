@@ -74,12 +74,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Link href="/dashboard" className="lg:invisible">
             <Logo />
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="hidden text-sm text-zinc-500 hover:text-zinc-900 sm:block dark:hover:text-zinc-100">
-              Ir al panel (demo)
-            </Link>
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
         <div className="flex flex-1 items-center justify-center px-4 pb-10 sm:px-6">
           <div className="w-full max-w-md">{children}</div>

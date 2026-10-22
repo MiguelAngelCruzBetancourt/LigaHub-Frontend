@@ -1,42 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
-import { useAuth } from "@/context/AuthContext";
-import { usersApi } from "@/lib/api/users";
-import { toBackendId } from "@/lib/api/adapters";
+import { describeError } from "@/lib/api/http";
+import { profilesApi } from "@/lib/api/profiles";
+import type { UserDetailResponseDTO } from "@/lib/api/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProfileForm } from "@/components/features/users/ProfileForm";
 
-/** Perfil del usuario autenticado (teléfono, fecha y fotografía). */
+/**
+ * Perfil del usuario autenticado (teléfono, fecha y fotografía).
+ * Usa /api/profile/me: el backend identifica al usuario por su token, así que
+ * la pantalla funciona con cualquier rol y nunca maneja ids ajenos.
+ */
 export default function PerfilPage() {
-  const { users, updateUser, loading } = useData();
+  const { refresh } = useData();
+  const { refreshUser } = useAuth();
   const { notify } = useToast();
-  const { user: sessionUser } = useAuth();
 
-  const me = users.find((u) => u.id === sessionUser?.id);
-  const [birthDate, setBirthDate] = useState<string>();
+  const [detail, setDetail] = useState<UserDetailResponseDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>();
 
-  // La fecha de nacimiento vive en Profile y no viene en el listado de usuarios.
   useEffect(() => {
-    if (!sessionUser) return;
     let active = true;
 
-    usersApi
-      .findByIdWithProfile(toBackendId(sessionUser.id))
-      .then((detail) => {
-        if (active) setBirthDate(detail.profile?.birthDate ?? "");
+    profilesApi
+      .findMine()
+      .then((result) => {
+        if (active) setDetail(result);
       })
-      .catch(() => {
-        if (active) setBirthDate("");
+      .catch((error) => {
+        if (active) setLoadError(describeError(error, "No se pudo cargar tu perfil."));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [sessionUser]);
+  }, []);
+
+  const me = useMemo<User | null>(
+    () =>
+      detail && {
+        id: String(detail.id),
+        name: detail.name,
+        email: detail.email,
+        phone: detail.profile?.phone ?? "",
+        avatarUrl: detail.profile?.photoUrl ?? undefined,
+        roleIds: [],
+        status: "activo",
+        createdAt: "",
+      },
+    [detail],
+  );
 
   return (
     <>
@@ -44,13 +67,22 @@ export default function PerfilPage() {
         title="Mi perfil"
         description="Actualiza tu número de contacto y tu foto para el álbum del equipo."
       />
-      {me ? (
+      {me && detail ? (
         <ProfileForm
           user={me}
-          birthDate={birthDate}
+          birthDate={detail.profile?.birthDate ?? ""}
           onSave={async (patch) => {
-            await updateUser(me.id, patch);
+            const saved = await profilesApi.saveMine({
+              phone: patch.phone.trim(),
+              birthDate: patch.birthDate,
+              // "" le indica al backend que quite la fotografía.
+              photoUrl: patch.avatarUrl ?? "",
+            });
+            setDetail((current) => current && { ...current, profile: saved });
             notify("Perfil actualizado. ¡Listo para el partido!");
+            // Mantiene al día los listados y el avatar del topbar.
+            void refresh();
+            void refreshUser();
           }}
         />
       ) : loading ? (
@@ -58,7 +90,7 @@ export default function PerfilPage() {
       ) : (
         <EmptyState
           title="Perfil no disponible"
-          description="No pudimos leer tu usuario. Verifica que tu rol tenga permiso de consulta."
+          description={loadError ?? "No pudimos leer tu perfil. Verifica que tu rol tenga permiso de consulta."}
         />
       )}
     </>

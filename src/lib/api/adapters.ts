@@ -144,7 +144,8 @@ export function resolveOperation(url: string, method: string): Operation {
   }
 
   const last = segmentsOf(url).pop() ?? "";
-  const isSingleResource = last === "{id}" || last === "profile" || last.startsWith("detail-with-");
+  const isSingleResource =
+    last === "{id}" || last === "profile" || last === "me" || last.startsWith("detail-with-");
   return isSingleResource ? "ver" : "listar";
 }
 
@@ -218,9 +219,8 @@ interface UserExtras {
 }
 
 /**
- * `avatarUrl` y `createdAt` no existen en la entidad User del backend. Se
- * devuelven en estado neutro para no romper las pantallas; `status` sale de
- * `active`.
+ * `createdAt` no existe en la entidad User del backend y se devuelve vacío;
+ * `status` sale de `active` y la foto (`avatarUrl`) de `Profile.photoUrl`.
  */
 export function adaptUser(dto: UserResponseDTO, extras: UserExtras = {}): User {
   return {
@@ -228,7 +228,7 @@ export function adaptUser(dto: UserResponseDTO, extras: UserExtras = {}): User {
     name: dto.name,
     email: dto.email,
     phone: extras.profile?.phone ?? "",
-    avatarUrl: undefined,
+    avatarUrl: extras.profile?.photoUrl ?? undefined,
     roleIds: extras.roleIds ?? [],
     status: dto.active ? "activo" : "inactivo",
     createdAt: "",

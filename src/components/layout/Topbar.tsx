@@ -46,7 +46,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
             href="/perfil"
             className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-zinc-100 dark:hover:bg-zinc-900"
           >
-            <Avatar name={me.name} size="sm" />
+            <Avatar name={me.name} src={me.photoUrl} size="sm" />
             <span className="hidden text-left leading-tight sm:block">
               <span className="block text-sm font-medium">{me.name}</span>
               <span className="block text-xs text-zinc-500">{roleLabel ?? "Sin rol"}</span>

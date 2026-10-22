@@ -34,6 +34,17 @@ export interface JwtPayload {
   jti?: string;
 }
 
+/** Respuesta de GET /api/auth/me: solo exige token, sin permiso asignado. */
+export interface CurrentUserResponseDTO {
+  id: number;
+  name: string;
+  email: string;
+  /** Data-URL de la foto de perfil; null si no tiene. */
+  photoUrl: string | null;
+  roles: string[];
+  permissions: PermissionResponseDTO[];
+}
+
 // --- Usuarios ---
 
 export interface UserResponseDTO {
@@ -81,12 +92,16 @@ export interface ProfileResponseDTO {
   phone: string;
   /** ISO local date, ej. "1999-05-20". */
   birthDate: string;
+  /** Imagen como data-URL; null si no hay fotografía. */
+  photoUrl: string | null;
 }
 
 export interface ProfileRequestDTO {
   phone: string;
   /** Obligatorio y en el pasado (@NotNull @Past en el backend). */
   birthDate: string;
+  /** Data-URL PNG/JPEG/WebP. Omitido = conservar la actual; "" = quitarla. */
+  photoUrl?: string;
 }
 
 // --- Roles ---

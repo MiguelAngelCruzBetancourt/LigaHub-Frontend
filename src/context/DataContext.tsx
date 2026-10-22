@@ -28,6 +28,7 @@ import { rolesApi } from "@/lib/api/roles";
 import { userRolesApi } from "@/lib/api/user-roles";
 import { usersApi } from "@/lib/api/users";
 import { useAuth } from "@/context/AuthContext";
+import { useAccess } from "@/lib/access";
 
 /**
  * `password` y `birthDate` no son parte del tipo `User` del frontend, pero el
@@ -89,10 +90,10 @@ function mergeModules(derived: SystemModule[]): SystemModule[] {
  * del perfil de cada usuario (una llamada por usuario, porque el contrato
  * actual no expone el teléfono en el listado).
  */
-async function fetchUsers(): Promise<User[]> {
+async function fetchUsers(canListUserRoles: boolean): Promise<User[]> {
   const [userDtos, links] = await Promise.all([
     usersApi.findAll(),
-    userRolesApi.findAll().catch((error) => {
+    (canListUserRoles ? userRolesApi.findAll() : Promise.resolve([])).catch((error) => {
       // Si el rol no tiene permiso sobre /api/user-roles, se sigue sin roles.
       if (error instanceof ApiError && error.isForbidden) return [];
       throw error;
@@ -115,7 +116,15 @@ async function fetchUsers(): Promise<User[]> {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user: sessionUser, isAuthenticated, loading: authLoading, refreshUser } = useAuth();
+  const access = useAccess();
+  const hasSessionUser = sessionUser !== null;
+  // Cada colección se pide solo si el rol tiene algún permiso de su módulo.
+  const canUsers = access.hasModule("m-usuarios");
+  const canRoles = access.hasModule("m-roles");
+  const canPermissions = access.hasModule("m-permisos");
+  const canRolePermissions = access.hasModule("m-roles-permisos");
+  const canUserRoles = access.hasModule("m-usuarios-roles");
 
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -127,25 +136,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // --- Cargas ---
 
   const reloadUsers = useCallback(async () => {
-    setUsers(await fetchUsers());
-  }, []);
+    if (!canUsers) {
+      setUsers([]);
+      return;
+    }
+    setUsers(await fetchUsers(canUserRoles));
+  }, [canUsers, canUserRoles]);
 
   const reloadPermissions = useCallback(async () => {
+    if (!canPermissions) {
+      setPermissions([]);
+      return;
+    }
     const dtos = await permissionsApi.findAll();
     setPermissions(dtos.map(adaptPermission));
-  }, []);
+  }, [canPermissions]);
 
   const reloadRolesAndMatrix = useCallback(async () => {
-    const roleDtos = await rolesApi.findAll();
-    const nextRoles = roleDtos.map(adaptRole);
+    const nextRoles = canRoles ? (await rolesApi.findAll()).map(adaptRole) : [];
     setRoles(nextRoles);
 
-    const links = await rolePermissionsApi.findAll().catch((apiError) => {
-      if (apiError instanceof ApiError && apiError.isForbidden) return [];
-      throw apiError;
-    });
+    const links = canRolePermissions
+      ? await rolePermissionsApi.findAll().catch((apiError) => {
+          if (apiError instanceof ApiError && apiError.isForbidden) return [];
+          throw apiError;
+        })
+      : [];
     setRolePermissionsState(buildRolePermissions(links, nextRoles));
-  }, []);
+  }, [canRoles, canRolePermissions]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -162,7 +180,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [reloadUsers, reloadRolesAndMatrix, reloadPermissions]);
 
   useEffect(() => {
-    if (authLoading) return;
+    // Sin el usuario hidratado aún no se sabe qué módulos puede consultar.
+    if (authLoading || (isAuthenticated && !hasSessionUser)) return;
 
     if (!isAuthenticated) {
       setUsers([]);
@@ -174,7 +193,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     void refresh();
-  }, [authLoading, isAuthenticated, refresh]);
+  }, [authLoading, isAuthenticated, hasSessionUser, refresh]);
 
   // --- Usuarios ---
 
@@ -251,8 +270,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       await reloadUsers();
+      // Puede haber cambiado el nombre, la foto o los roles del propio usuario.
+      await refreshUser();
     },
-    [users, saveProfile, reloadUsers],
+    [users, saveProfile, reloadUsers, refreshUser],
   );
 
   const deleteUser = useCallback(
@@ -301,8 +322,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       await rolesApi.remove(toBackendId(id));
       await Promise.all([reloadRolesAndMatrix(), reloadUsers()]);
+      await refreshUser();
     },
-    [reloadRolesAndMatrix, reloadUsers],
+    [reloadRolesAndMatrix, reloadUsers, refreshUser],
   );
 
   const addUsersToRole = useCallback(
@@ -312,16 +334,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await userRolesApi.assign({ userId: toBackendId(userId), roleId: numericRoleId });
       }
       await reloadUsers();
+      await refreshUser();
     },
-    [reloadUsers],
+    [reloadUsers, refreshUser],
   );
 
   const removeUserFromRole = useCallback(
     async (roleId: string, userId: string) => {
       await userRolesApi.remove(toBackendId(userId), toBackendId(roleId));
       await reloadUsers();
+      await refreshUser();
     },
-    [reloadUsers],
+    [reloadUsers, refreshUser],
   );
 
   // --- Permisos ---
@@ -379,8 +403,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       await reloadRolesAndMatrix();
+      // Si el rol editado es del propio usuario, sus permisos cambian al instante.
+      await refreshUser();
     },
-    [rolePermissions, reloadRolesAndMatrix],
+    [rolePermissions, reloadRolesAndMatrix, refreshUser],
   );
 
   const modules = useMemo(() => mergeModules(buildModules(permissions)), [permissions]);
