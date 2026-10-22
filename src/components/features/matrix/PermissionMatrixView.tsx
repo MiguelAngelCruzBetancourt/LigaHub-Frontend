@@ -110,7 +110,7 @@ export function PermissionMatrixView() {
 
         <PermissionMatrix
           roleName={role.name}
-          modules={matrix.modules}
+          groups={matrix.groups}
           draft={matrix.draft}
           isAvailable={matrix.isAvailable}
           isPending={matrix.isPending}

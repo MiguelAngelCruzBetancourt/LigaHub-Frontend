@@ -39,7 +39,8 @@ export type UserInput = Omit<User, "id" | "createdAt"> & {
   birthDate?: string;
 };
 export type RoleInput = Omit<Role, "id">;
-export type PermissionInput = Omit<Permission, "id">;
+/** `moduleId` no se envía: el frontend lo deriva de `model`. */
+export type PermissionInput = Omit<Permission, "id" | "moduleId">;
 
 interface DataContextValue {
   users: User[];
@@ -327,8 +328,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const createPermission = useCallback(
     async (input: PermissionInput) => {
-      // El backend solo almacena url + method; módulo y operación se derivan.
-      const created = await permissionsApi.create({ url: input.url, method: input.method });
+      // El backend almacena url + method + model; la operación se deriva de método y URL.
+      const created = await permissionsApi.create({ url: input.url, method: input.method, model: input.model.trim() });
       await Promise.all([reloadPermissions(), reloadRolesAndMatrix()]);
       return adaptPermission(created);
     },
@@ -341,6 +342,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await permissionsApi.update(toBackendId(id), {
         url: patch.url ?? current?.url ?? "",
         method: patch.method ?? current?.method ?? "GET",
+        model: (patch.model ?? current?.model ?? "").trim(),
       });
       await Promise.all([reloadPermissions(), reloadRolesAndMatrix()]);
     },

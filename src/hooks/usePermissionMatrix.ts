@@ -1,12 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Operation, Permission } from "@/types";
-import { OPERATIONS } from "@/lib/constants";
+import type { Operation, Permission, SystemModule } from "@/types";
+import { DEFAULT_MODULE_GROUP, OPERATIONS } from "@/lib/constants";
 import { useData } from "@/context/DataContext";
 
 /** Clave de celda de la matriz: "moduloId:operacion". */
 export type CellKey = `${string}:${Operation}`;
+
+/** Sección de la matriz: módulos que comparten `group` (ej. "Administración"). */
+export interface ModuleGroup {
+  name: string;
+  modules: SystemModule[];
+}
 
 export const cellKey = (moduleId: string, op: Operation): CellKey => `${moduleId}:${op}`;
 
@@ -60,6 +66,22 @@ export function usePermissionMatrix(roleId: string) {
     () => allModules.filter((module) => OPERATIONS.some((op) => isAvailable(cellKey(module.id, op.id)))),
     [allModules, isAvailable],
   );
+
+  /** Módulos agrupados por sección; el grupo por defecto va al final. */
+  const groups = useMemo<ModuleGroup[]>(() => {
+    const byName = new Map<string, SystemModule[]>();
+    for (const module of modules) {
+      const name = module.group ?? DEFAULT_MODULE_GROUP;
+      byName.set(name, [...(byName.get(name) ?? []), module]);
+    }
+    return [...byName]
+      .map(([name, groupModules]) => ({ name, modules: groupModules }))
+      .sort((a, b) => {
+        if (a.name === DEFAULT_MODULE_GROUP) return 1;
+        if (b.name === DEFAULT_MODULE_GROUP) return -1;
+        return a.name.localeCompare(b.name, "es");
+      });
+  }, [modules]);
 
   const toggle = useCallback(
     (moduleId: string, op: Operation) => {
@@ -143,6 +165,7 @@ export function usePermissionMatrix(roleId: string) {
 
   return {
     modules,
+    groups,
     draft,
     isAvailable,
     isPending,

@@ -4,8 +4,9 @@
  *
  * Reglas:
  * - Los ids del backend son `Long`; en el frontend siguen siendo `string`.
- * - El backend NO guarda `moduleId` ni `operation` en `Permission` (solo
- *   `url` + `method`), así que ambos se DERIVAN aquí de forma determinista.
+ * - El backend guarda `url`, `method` y `model` en `Permission`. El módulo de
+ *   la UI (`moduleId`) se deriva de `model`; `operation` se DERIVA de método + URL.
+ *   Solo los permisos antiguos sin `model` caen en la derivación por URL.
  * - Tampoco guarda `avatarUrl` ni `createdAt` de usuario: se rellenan con
  *   valores neutros y la UI los sigue mostrando.
  */
@@ -19,7 +20,7 @@ import type {
   SystemModule,
   User,
 } from "@/types";
-import { HTTP_METHODS } from "@/lib/constants";
+import { DEFAULT_MODULE_GROUP, HTTP_METHODS } from "@/lib/constants";
 import { MOCK_MODULES } from "@/lib/mock-data";
 import type {
   PermissionResponseDTO,
@@ -45,7 +46,7 @@ export function toBackendId(id: string): number {
 
 // --- Permisos: derivación de módulo y operación ---
 
-/** Primer segmento tras /api/ → id de módulo del frontend. */
+/** Primer segmento tras /api/ → id de módulo del frontend (solo permisos sin `model`). */
 const SEGMENT_TO_MODULE: Record<string, string> = {
   users: "m-usuarios",
   roles: "m-roles",
@@ -54,16 +55,53 @@ const SEGMENT_TO_MODULE: Record<string, string> = {
   "role-permissions": "m-roles-permisos",
 };
 
+/** `model` del backend (en kebab-case) → id de módulo del frontend. */
+const MODEL_TO_MODULE: Record<string, string> = {
+  user: "m-usuarios",
+  profile: "m-perfiles",
+  session: "m-sesiones",
+  role: "m-roles",
+  permission: "m-permisos",
+  "user-role": "m-usuarios-roles",
+  "role-permission": "m-roles-permisos",
+};
+
+const SECURITY_GROUP = "Administración";
+
 /** Metadatos de los módulos que sí existen en ms-security. */
 const SECURITY_MODULES: Record<string, Omit<SystemModule, "id">> = {
-  "m-usuarios": { name: "Usuarios", description: "Cuentas de acceso", icon: "users" },
-  "m-perfiles": { name: "Perfiles", description: "Datos personales", icon: "shirt" },
-  "m-sesiones": { name: "Sesiones", description: "Tokens y 2FA", icon: "calendar" },
-  "m-roles": { name: "Roles", description: "Perfiles y cargos", icon: "shield" },
-  "m-permisos": { name: "Permisos", description: "Catálogo de endpoints", icon: "card" },
-  "m-usuarios-roles": { name: "Usuarios por rol", description: "Asignación de roles", icon: "whistle" },
-  "m-roles-permisos": { name: "Permisos por rol", description: "Matriz de autorización", icon: "trophy" },
+  "m-usuarios": { name: "Usuarios", description: "Cuentas de acceso", icon: "users", group: SECURITY_GROUP },
+  "m-perfiles": { name: "Perfiles", description: "Datos personales", icon: "shirt", group: SECURITY_GROUP },
+  "m-sesiones": { name: "Sesiones", description: "Tokens y 2FA", icon: "calendar", group: SECURITY_GROUP },
+  "m-roles": { name: "Roles", description: "Perfiles y cargos", icon: "shield", group: SECURITY_GROUP },
+  "m-permisos": { name: "Permisos", description: "Catálogo de endpoints", icon: "card", group: SECURITY_GROUP },
+  "m-usuarios-roles": {
+    name: "Usuarios por rol",
+    description: "Asignación de roles",
+    icon: "whistle",
+    group: SECURITY_GROUP,
+  },
+  "m-roles-permisos": {
+    name: "Permisos por rol",
+    description: "Matriz de autorización",
+    icon: "trophy",
+    group: SECURITY_GROUP,
+  },
 };
+
+/** "UserRole" / "user role" → "user-role". */
+const modelSlug = (model: string) =>
+  model
+    .trim()
+    .replace(/([a-z\d])([A-Z])/g, "$1-$2")
+    .replace(/[\s_]+/g, "-")
+    .toLowerCase();
+
+/** Id de módulo de la UI para un valor de `model` del backend. */
+export function moduleIdFromModel(model: string): string {
+  const slug = modelSlug(model);
+  return MODEL_TO_MODULE[slug] ?? `m-${slug}`;
+}
 
 /** Sustituye cualquier `{...}` por `{id}`, igual que PermissionService.normalizeUrl. */
 const normalize = (url: string) => url.replace(/\{[^}]*\}/g, "{id}").replace(/\/+$/, "");
@@ -116,9 +154,13 @@ const toHttpMethod = (method: string): HttpMethod => {
 };
 
 export function adaptPermission(dto: PermissionResponseDTO): Permission {
+  const model = dto.model?.trim() ?? "";
+  const moduleId = model ? moduleIdFromModel(model) : resolveModuleId(dto.url);
+
   return {
     id: toFrontendId(dto.id),
-    moduleId: resolveModuleId(dto.url),
+    model,
+    moduleId,
     operation: resolveOperation(dto.url, dto.method),
     url: dto.url,
     method: toHttpMethod(dto.method),
@@ -131,13 +173,16 @@ const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slic
  * Catálogo de módulos efectivo: se calcula de los permisos reales.
  * Para los ids conocidos usa los metadatos de arriba; si no, cae en
  * MOCK_MODULES (que conserva iconos y etiquetas del dominio de fútbol) y,
- * en último caso, deriva un nombre del propio segmento de la URL.
+ * en último caso, usa el propio `model` del permiso como nombre.
  */
 export function buildModules(permissions: Permission[]): SystemModule[] {
-  const ids = [...new Set(permissions.map((permission) => permission.moduleId))];
+  const modelById = new Map<string, string>();
+  for (const permission of permissions) {
+    if (!modelById.has(permission.moduleId)) modelById.set(permission.moduleId, permission.model);
+  }
 
-  return ids
-    .map<SystemModule>((id) => {
+  return [...modelById]
+    .map<SystemModule>(([id, model]) => {
       const known = SECURITY_MODULES[id];
       if (known) return { id, ...known };
 
@@ -146,9 +191,10 @@ export function buildModules(permissions: Permission[]): SystemModule[] {
 
       return {
         id,
-        name: capitalize(id.replace(/^m-/, "").replace(/-/g, " ")),
+        name: capitalize(model || id.replace(/^m-/, "").replace(/-/g, " ")),
         description: "Recurso del backend",
         icon: "map",
+        group: DEFAULT_MODULE_GROUP,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "es"));

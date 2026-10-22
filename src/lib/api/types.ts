@@ -112,11 +112,15 @@ export interface PermissionResponseDTO {
   id: number;
   url: string;
   method: string;
+  /** Entidad de dominio a la que pertenece el permiso, ej. "User". Vacío en filas antiguas. */
+  model: string;
 }
 
 export interface PermissionRequestDTO {
   url: string;
   method: string;
+  /** Obligatorio (@NotBlank, máx. 255). */
+  model: string;
 }
 
 // --- Relaciones usuario-rol ---

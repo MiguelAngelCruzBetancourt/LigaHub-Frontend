@@ -36,10 +36,15 @@ export interface SystemModule {
   name: string;
   description: string;
   icon: ModuleIcon;
+  /** Sección de la matriz bajo la que se agrupa el módulo (ej. "Administración"). */
+  group?: string;
 }
 
 export interface Permission {
   id: string;
+  /** Valor de la columna `model` del backend (ej. "User", "Role"). */
+  model: string;
+  /** Id de módulo de la UI, derivado de `model`. */
   moduleId: string;
   operation: Operation;
   url: string;

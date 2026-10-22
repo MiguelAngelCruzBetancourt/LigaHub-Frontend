@@ -12,6 +12,9 @@ export const OPERATION_LABEL: Record<Operation, string> = Object.fromEntries(
   OPERATIONS.map((o) => [o.id, o.label]),
 ) as Record<Operation, string>;
 
+/** Sección de la matriz para los módulos sin grupo asignado. */
+export const DEFAULT_MODULE_GROUP = "General";
+
 export const HTTP_METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
 export const DEFAULT_METHOD: Record<Operation, HttpMethod> = {

@@ -22,21 +22,21 @@ export const MOCK_ROLES: Role[] = [
 ];
 
 export const MOCK_MODULES: SystemModule[] = [
-  { id: "m-usuarios", name: "Usuarios", description: "Cuentas de acceso", icon: "users" },
-  { id: "m-roles", name: "Roles", description: "Perfiles y cargos", icon: "shield" },
-  { id: "m-jugadores", name: "Jugadores", description: "Fichas y plantillas", icon: "shirt" },
-  { id: "m-partidos", name: "Partidos", description: "Calendario y resultados", icon: "calendar" },
-  { id: "m-canchas", name: "Canchas", description: "Escenarios deportivos", icon: "map" },
-  { id: "m-torneos", name: "Torneos", description: "Ligas y copas", icon: "trophy" },
-  { id: "m-arbitraje", name: "Arbitraje", description: "Designaciones arbitrales", icon: "whistle" },
-  { id: "m-tarjetas", name: "Tarjetas", description: "Amonestaciones y sanciones", icon: "card" },
+  { id: "m-usuarios", name: "Usuarios", description: "Cuentas de acceso", icon: "users", group: "Administración" },
+  { id: "m-roles", name: "Roles", description: "Perfiles y cargos", icon: "shield", group: "Administración" },
+  { id: "m-jugadores", name: "Jugadores", description: "Fichas y plantillas", icon: "shirt", group: "Gestión deportiva" },
+  { id: "m-partidos", name: "Partidos", description: "Calendario y resultados", icon: "calendar", group: "Gestión deportiva" },
+  { id: "m-canchas", name: "Canchas", description: "Escenarios deportivos", icon: "map", group: "Gestión deportiva" },
+  { id: "m-torneos", name: "Torneos", description: "Ligas y copas", icon: "trophy", group: "Gestión deportiva" },
+  { id: "m-arbitraje", name: "Arbitraje", description: "Designaciones arbitrales", icon: "whistle", group: "Gestión deportiva" },
+  { id: "m-tarjetas", name: "Tarjetas", description: "Amonestaciones y sanciones", icon: "card", group: "Gestión deportiva" },
 ];
 
 export const MOCK_PERMISSIONS: Permission[] = MOCK_MODULES.flatMap((m) =>
   OPERATIONS.map(({ id: op }) => {
     const base = `/api/${m.id.slice(2)}`;
     const url = op === "listar" || op === "crear" ? base : `${base}/:id`;
-    return { id: `p-${m.id.slice(2)}-${op}`, moduleId: m.id, operation: op, url, method: DEFAULT_METHOD[op] };
+    return { id: `p-${m.id.slice(2)}-${op}`, model: m.name, moduleId: m.id, operation: op, url, method: DEFAULT_METHOD[op] };
   }),
 );
 

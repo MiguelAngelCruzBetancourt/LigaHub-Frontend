@@ -31,7 +31,11 @@ export default function PermisosPage() {
     return permissions.filter(
       (p) =>
         (moduleFilter === "todos" || p.moduleId === moduleFilter) &&
-        (!q || p.url.toLowerCase().includes(q) || p.method.toLowerCase().includes(q) || p.operation.includes(q)),
+        (!q ||
+          p.url.toLowerCase().includes(q) ||
+          p.method.toLowerCase().includes(q) ||
+          p.model.toLowerCase().includes(q) ||
+          p.operation.includes(q)),
     );
   }, [permissions, query, moduleFilter]);
 
@@ -65,7 +69,7 @@ export default function PermisosPage() {
                   options={[{ value: "todos", label: "Todos los módulos" }, ...modules.map((m) => ({ value: m.id, label: m.name }))]}
                 />
               </div>
-              <SearchInput value={query} onChange={setQuery} placeholder="Buscar URL o método" />
+              <SearchInput value={query} onChange={setQuery} placeholder="Buscar URL, método o modelo" />
             </div>
           }
         />
@@ -81,7 +85,6 @@ export default function PermisosPage() {
         open={form.isOpen}
         onClose={form.close}
         permission={form.payload}
-        modules={modules}
         existing={permissions}
         onSubmit={async (input) => {
           if (form.payload) {

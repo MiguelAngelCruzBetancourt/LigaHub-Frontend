@@ -22,13 +22,16 @@ export function PermissionsTable({ permissions, modules, onEdit, onDelete }: Per
   const columns: Column<Permission>[] = [
     {
       key: "module",
-      header: "Recurso / Módulo",
+      header: "Modelo / Módulo",
       cell: (p) => {
         const m = moduleById(p.moduleId);
         return m ? (
           <div className="flex items-center gap-3">
             <ModuleIcon name={m.icon} />
-            <span className="font-medium text-zinc-900 dark:text-zinc-100">{m.name}</span>
+            <div className="min-w-0">
+              <p className="font-medium text-zinc-900 dark:text-zinc-100">{m.name}</p>
+              {p.model && <p className="font-mono text-xs text-zinc-500">{p.model}</p>}
+            </div>
           </div>
         ) : (
           <span className="text-zinc-500">—</span>
