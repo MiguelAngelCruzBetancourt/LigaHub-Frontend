@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { KeyRound, Link2, Pencil } from "lucide-react";
+import { KeyRound, Link2, Pencil, TriangleAlert } from "lucide-react";
 import type { HttpMethod, Operation, Permission, SystemModule } from "@/types";
 import type { PermissionInput } from "@/context/DataContext";
 import { DEFAULT_METHOD, HTTP_METHODS, OPERATIONS } from "@/lib/constants";
+import { describeError } from "@/lib/api/http";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
@@ -13,20 +14,25 @@ import { cn } from "@/utils/cn";
 interface PermissionFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: PermissionInput) => void;
+  /** Puede ser asíncrono: el modal espera y solo cierra si no hubo error. */
+  onSubmit: (input: PermissionInput) => void | Promise<void>;
   modules: SystemModule[];
   permission?: Permission;
   /** Permisos existentes para detectar duplicados (mismo método + URL). */
   existing: Permission[];
 }
 
+type FormErrors = Partial<Record<keyof PermissionInput | "form", string>>;
+
 export function PermissionFormModal({ open, onClose, onSubmit, modules, permission, existing }: PermissionFormModalProps) {
   const [values, setValues] = useState<PermissionInput>({ moduleId: "", operation: "ver", url: "", method: "GET" });
-  const [errors, setErrors] = useState<Partial<Record<keyof PermissionInput, string>>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setErrors({});
+    setSubmitting(false);
     setValues(
       permission
         ? { moduleId: permission.moduleId, operation: permission.operation, url: permission.url, method: permission.method }
@@ -42,9 +48,9 @@ export function PermissionFormModal({ open, onClose, onSubmit, modules, permissi
     setValues((v) => ({ ...v, operation: op, method: DEFAULT_METHOD[op] }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const errs: typeof errors = {};
+    const errs: FormErrors = {};
     if (!values.moduleId) errs.moduleId = "Selecciona el módulo o recurso.";
     if (!/^\/[\w\-/:{}]*$/.test(values.url)) errs.url = "La URL debe iniciar con “/”, ej. /api/partidos/:id";
     else if (
@@ -53,8 +59,17 @@ export function PermissionFormModal({ open, onClose, onSubmit, modules, permissi
       errs.url = "Ya existe un permiso con ese método y URL.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    onSubmit(values);
-    onClose();
+
+    setSubmitting(true);
+    try {
+      await onSubmit(values);
+      onClose();
+    } catch (error) {
+      // El backend tiene una restricción única sobre (url, method): puede dar 409.
+      setErrors({ form: describeError(error, "No se pudo guardar el permiso.") });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -69,13 +84,22 @@ export function PermissionFormModal({ open, onClose, onSubmit, modules, permissi
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" form="permission-form">
+          <Button type="submit" form="permission-form" loading={submitting}>
             {permission ? "Guardar cambios" : "Registrar permiso"}
           </Button>
         </>
       }
     >
       <form id="permission-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {errors.form && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-co-red/30 bg-co-red/10 px-3 py-2.5 text-sm text-co-red"
+          >
+            <TriangleAlert className="size-4 shrink-0" />
+            {errors.form}
+          </div>
+        )}
         <Select
           label="Recurso / Módulo"
           placeholder="Selecciona un módulo"
@@ -83,6 +107,7 @@ export function PermissionFormModal({ open, onClose, onSubmit, modules, permissi
           onChange={(e) => set("moduleId", e.target.value)}
           options={modules.map((m) => ({ value: m.id, label: `${m.name} — ${m.description}` }))}
           error={errors.moduleId}
+          hint="El backend solo guarda URL y método; al recargar, el módulo se deduce de la URL."
         />
 
         <fieldset>

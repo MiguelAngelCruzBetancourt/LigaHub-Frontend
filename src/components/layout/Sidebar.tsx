@@ -7,6 +7,7 @@ import { AUTH_LINKS, NAV_SECTIONS } from "@/lib/navigation";
 import { cn } from "@/utils/cn";
 import { Logo } from "./Logo";
 import { TricolorBar } from "@/components/ui/TricolorBar";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   /** Drawer móvil abierto. */
@@ -16,6 +17,7 @@ interface SidebarProps {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { logout } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -86,12 +88,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
-        <Link
-          href="/login"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-co-red/10 hover:text-co-red dark:text-zinc-400"
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            logout();
+          }}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-co-red/10 hover:text-co-red dark:text-zinc-400"
         >
           <LogOut className="size-4.5" /> Salir del estadio
-        </Link>
+        </button>
       </div>
     </div>
   );

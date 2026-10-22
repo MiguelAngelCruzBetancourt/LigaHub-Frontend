@@ -8,21 +8,25 @@ import { Input } from "@/components/ui/Field";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { useAuth } from "@/context/AuthContext";
+import { ApiError } from "@/lib/api/http";
 import { AuthDivider, AuthHeader, OAuthButtons } from "./OAuthButtons";
 
 /**
- * HU-SE-07 · Inicio de sesión (solo UI).
+ * Inicio de sesión.
+ * Autentica contra POST /api/auth/login de ms-security.
  * 60%: fondo blanco/negro · 30%: inputs, bordes y botones OAuth en grises · 10%: CTA azul, enlaces y acentos tricolor.
  */
 export function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const errs: typeof errors = {};
     if (!/^\S+@\S+\.\S+$/.test(email)) errs.email = "Ingresa un correo válido.";
@@ -31,15 +35,20 @@ export function LoginForm() {
     if (Object.keys(errs).length) return;
 
     setLoading(true);
-    // Simulación: cualquier credencial válida pasa al segundo factor.
-    setTimeout(() => {
+    try {
+      await login(email, password, remember);
+      // 2FA desactivado por ahora (el backend no tiene endpoint 2FA):
+      // router.push("/verificar-2fa");
+      router.push("/dashboard");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "No se pudo iniciar sesión. Inténtalo de nuevo.";
+      setErrors({ form: message });
+    } finally {
       setLoading(false);
-      if (password === "offside") {
-        setErrors({ form: "Credenciales incorrectas: estás en fuera de lugar." });
-        return;
-      }
-      router.push("/verificar-2fa");
-    }, 900);
+    }
   };
 
   return (
@@ -49,7 +58,13 @@ export function LoginForm() {
         subtitle="Inicia sesión para gestionar usuarios, roles y permisos de tu club."
       />
 
-      <OAuthButtons onSelect={() => router.push("/dashboard")} />
+      <OAuthButtons
+        onSelect={(provider) =>
+          setErrors({
+            form: `El acceso con ${provider} no está habilitado: ms-security no tiene proveedores OAuth configurados.`,
+          })
+        }
+      />
       <AuthDivider>o con tu correo</AuthDivider>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -96,7 +111,8 @@ export function LoginForm() {
         </Link>
       </p>
       <p className="mt-3 text-center text-xs text-zinc-400">
-        Demo: cualquier correo válido funciona. Usa la clave <code className="font-mono">offside</code> para ver el error.
+        Usuario sembrado por el backend: <code className="font-mono">admin@uc.edu.co</code> /{" "}
+        <code className="font-mono">Admin123!</code>
       </p>
     </>
   );

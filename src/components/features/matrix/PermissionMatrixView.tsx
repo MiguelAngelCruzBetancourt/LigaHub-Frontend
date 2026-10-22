@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Grid3x3, Users } from "lucide-react";
 import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
 import { usePermissionMatrix } from "@/hooks/usePermissionMatrix";
+import { describeError } from "@/lib/api/http";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -20,13 +21,21 @@ import { MatrixSaveBar } from "./MatrixSaveBar";
 export function PermissionMatrixView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { roles, users } = useData();
+  const { roles, users, loading } = useData();
   const { notify } = useToast();
 
   const initialRole = roles.find((r) => r.id === searchParams.get("rol"))?.id ?? roles[0]?.id ?? "";
   const [roleId, setRoleId] = useState(initialRole);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Los roles llegan del backend después del primer render: hay que elegir
+  // el inicial cuando la lista esté disponible.
+  useEffect(() => {
+    if (roleId && roles.some((r) => r.id === roleId)) return;
+    const next = roles.find((r) => r.id === searchParams.get("rol"))?.id ?? roles[0]?.id ?? "";
+    if (next !== roleId) setRoleId(next);
+  }, [roles, roleId, searchParams]);
 
   const matrix = usePermissionMatrix(roleId);
   const role = roles.find((r) => r.id === roleId);
@@ -43,18 +52,25 @@ export function PermissionMatrixView() {
     else applyRole(id);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    // Simula la latencia de una API (no hay backend real).
-    setTimeout(() => {
-      matrix.save();
-      setSaving(false);
+    try {
+      // Persiste el diff vía /api/role-permissions.
+      await matrix.save();
       notify(`Matriz de “${role?.name}” guardada: ${matrix.totalAssigned} permisos en juego.`);
-    }, 600);
+    } catch (error) {
+      notify(describeError(error, "No se pudo guardar la matriz."), "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!role) {
-    return <EmptyState title="No hay roles" description="Crea un rol para configurar su matriz de permisos." />;
+    return loading ? (
+      <EmptyState title="Cargando roles…" description="Consultando los datos en el servidor." />
+    ) : (
+      <EmptyState title="No hay roles" description="Crea un rol para configurar su matriz de permisos." />
+    );
   }
 
   const coverage = matrix.totalAvailable ? Math.round((matrix.totalAssigned / matrix.totalAvailable) * 100) : 0;
@@ -62,7 +78,6 @@ export function PermissionMatrixView() {
   return (
     <>
       <PageHeader
-        eyebrow="HU-SE-06"
         title="Matriz de permisos"
         description="Selecciona un rol y marca las operaciones que puede ejecutar en cada módulo. Los cambios se aplican al pulsar “Guardar”."
       />

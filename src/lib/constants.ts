@@ -21,3 +21,12 @@ export const DEFAULT_METHOD: Record<Operation, HttpMethod> = {
   actualizar: "PUT",
   eliminar: "DELETE",
 };
+
+/**
+ * Mismo patrón que CreateUserDTO/UpdateUserDTO en ms-security: entre 8 y 72
+ * caracteres sin espacios, con minúscula, mayúscula, dígito y uno de @$!%*?&.
+ * Validarlo en el cliente evita un 400 del backend.
+ */
+export const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])\S{8,72}$/;
+
+export const PASSWORD_HINT = "8-72 caracteres con mayúscula, minúscula, número y uno de @$!%*?&";

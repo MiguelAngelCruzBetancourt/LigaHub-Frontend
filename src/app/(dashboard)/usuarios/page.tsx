@@ -7,6 +7,7 @@ import type { User, UserStatus } from "@/types";
 import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
+import { describeError } from "@/lib/api/http";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -24,10 +25,10 @@ const FILTERS: { id: StatusFilter; label: string }[] = [
   { id: "inactivo", label: "Inactivos" },
 ];
 
-/** HU-SE-01 / HU-SE-02 · Gestión de usuarios (componente contenedor). */
+/** Gestión de usuarios (componente contenedor). */
 export default function UsuariosPage() {
   const router = useRouter();
-  const { users, roles, createUser, updateUser, deleteUser, toggleUserStatus } = useData();
+  const { users, roles, createUser, updateUser, deleteUser, toggleUserStatus, loading, error } = useData();
   const { notify } = useToast();
 
   const [query, setQuery] = useState("");
@@ -49,7 +50,6 @@ export default function UsuariosPage() {
   return (
     <>
       <PageHeader
-        eyebrow="HU-SE-01 · HU-SE-02"
         title="Gestión de usuarios"
         description="Administra la plantilla de usuarios: fichajes, ediciones, suspensiones y bajas."
         actions={
@@ -59,11 +59,20 @@ export default function UsuariosPage() {
         }
       />
 
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-co-red/30 bg-co-red/10 px-4 py-3 text-sm text-co-red"
+        >
+          {error}
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <CardHeader
           icon={<Users />}
           title="Plantilla"
-          description={`${filtered.length} de ${users.length} usuarios`}
+          description={loading ? "Cargando usuarios…" : `${filtered.length} de ${users.length} usuarios`}
           action={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5 dark:border-zinc-800 dark:bg-black">
@@ -90,6 +99,7 @@ export default function UsuariosPage() {
           users={filtered}
           roles={roles}
           onView={(u) => router.push(`/usuarios/${u.id}`)}
+          onManage={(u) => router.push(`/usuarios/${u.id}`)}
           onEdit={(u) => form.open(u)}
           onToggleStatus={(u) => confirmStatus.open(u)}
           onDelete={(u) => confirmDelete.open(u)}
@@ -101,12 +111,13 @@ export default function UsuariosPage() {
         onClose={form.close}
         user={form.payload}
         roles={roles}
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
+          // Si el backend falla, el error se propaga y el modal lo muestra.
           if (form.payload) {
-            updateUser(form.payload.id, input);
+            await updateUser(form.payload.id, input);
             notify(`Usuario “${input.name}” actualizado.`);
           } else {
-            createUser(input);
+            await createUser(input);
             notify(`¡Fichaje confirmado! ${input.name} se unió al equipo.`);
           }
         }}
@@ -129,11 +140,15 @@ export default function UsuariosPage() {
             </>
           )
         }
-        onConfirm={() => {
+        onConfirm={async () => {
           const u = confirmStatus.payload;
           if (!u) return;
-          toggleUserStatus(u.id);
-          notify(u.status === "activo" ? `${u.name} fue desactivado.` : `${u.name} fue reactivado.`);
+          try {
+            await toggleUserStatus(u.id);
+            notify(u.status === "activo" ? `${u.name} fue desactivado.` : `${u.name} fue reactivado.`);
+          } catch (error) {
+            notify(describeError(error, "No se pudo cambiar el estado del usuario."), "error");
+          }
         }}
       />
 
@@ -148,11 +163,15 @@ export default function UsuariosPage() {
             definitiva y no se puede deshacer.
           </>
         }
-        onConfirm={() => {
+        onConfirm={async () => {
           const u = confirmDelete.payload;
           if (!u) return;
-          deleteUser(u.id);
-          notify(`${u.name} fue eliminado.`, "error");
+          try {
+            await deleteUser(u.id);
+            notify(`${u.name} fue eliminado.`, "error");
+          } catch (error) {
+            notify(describeError(error, "No se pudo eliminar el usuario."), "error");
+          }
         }}
       />
     </>

@@ -1,3 +1,15 @@
+/**
+ * Datos de demostración previos a la integración con ms-security.
+ *
+ * Desde que DataContext consume el backend real, lo único que sigue en uso es
+ * `MOCK_MODULES`, que actúa como catálogo de iconos y etiquetas para los
+ * módulos: el backend no tiene entidad Módulo, así que `adapters.ts` deriva los
+ * módulos de las URLs de los permisos y completa su presentación con esta
+ * lista. El resto se conserva como referencia del modelo original.
+ *
+ * Ver `frontend/docs/INTEGRACION.md`.
+ */
+
 import type { Permission, Role, RolePermissions, SystemModule, User } from "@/types";
 import { DEFAULT_METHOD, OPERATIONS } from "./constants";
 

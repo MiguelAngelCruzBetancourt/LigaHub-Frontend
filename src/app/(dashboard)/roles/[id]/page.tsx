@@ -7,6 +7,7 @@ import type { User } from "@/types";
 import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
+import { describeError } from "@/lib/api/http";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,11 +18,20 @@ import { RoleUsersPanel } from "@/components/features/roles/RoleUsersPanel";
 import { AddUsersModal } from "@/components/features/roles/AddUsersModal";
 import { RoleFormModal } from "@/components/features/roles/RoleFormModal";
 
-/** HU-SE-04 · Detalle del rol y asignación de usuarios. */
+/** Detalle del rol y asignación de usuarios. */
 export default function RolDetallePage() {
   const { id } = useParams<{ id: string }>();
-  const { roles, users, rolePermissions, modules, permissions, updateRole, addUsersToRole, removeUserFromRole } =
-    useData();
+  const {
+    roles,
+    users,
+    rolePermissions,
+    modules,
+    permissions,
+    updateRole,
+    addUsersToRole,
+    removeUserFromRole,
+    loading,
+  } = useData();
   const { notify } = useToast();
 
   const addModal = useDisclosure();
@@ -31,7 +41,9 @@ export default function RolDetallePage() {
   const role = roles.find((r) => r.id === id);
 
   if (!role) {
-    return (
+    return loading ? (
+      <EmptyState title="Cargando rol…" description="Consultando los datos en el servidor." />
+    ) : (
       <EmptyState
         title="Rol no encontrado"
         description="Puede que haya sido eliminado."
@@ -64,7 +76,6 @@ export default function RolDetallePage() {
         <ArrowLeft className="size-4" /> Volver a roles
       </Link>
       <PageHeader
-        eyebrow="HU-SE-04"
         title={role.name}
         description={role.description}
         actions={
@@ -116,9 +127,13 @@ export default function RolDetallePage() {
         onClose={addModal.close}
         roleName={role.name}
         available={available}
-        onConfirm={(ids) => {
-          addUsersToRole(role.id, ids);
-          notify(`${ids.length} usuario(s) convocado(s) al rol ${role.name}.`);
+        onConfirm={async (ids) => {
+          try {
+            await addUsersToRole(role.id, ids);
+            notify(`${ids.length} usuario(s) convocado(s) al rol ${role.name}.`);
+          } catch (error) {
+            notify(describeError(error, "No se pudo asignar el rol."), "error");
+          }
         }}
       />
 
@@ -127,8 +142,8 @@ export default function RolDetallePage() {
         onClose={editModal.close}
         role={role}
         existingNames={roles.map((r) => r.name)}
-        onSubmit={(input) => {
-          updateRole(role.id, input);
+        onSubmit={async (input) => {
+          await updateRole(role.id, input);
           notify("Rol actualizado.");
         }}
       />
@@ -144,11 +159,15 @@ export default function RolDetallePage() {
             Perderá los permisos asociados a este rol.
           </>
         }
-        onConfirm={() => {
+        onConfirm={async () => {
           const u = confirmRemove.payload;
           if (!u) return;
-          removeUserFromRole(role.id, u.id);
-          notify(`${u.name} fue removido del rol.`, "error");
+          try {
+            await removeUserFromRole(role.id, u.id);
+            notify(`${u.name} fue removido del rol.`, "error");
+          } catch (error) {
+            notify(describeError(error, "No se pudo remover el usuario del rol."), "error");
+          }
         }}
       />
     </>

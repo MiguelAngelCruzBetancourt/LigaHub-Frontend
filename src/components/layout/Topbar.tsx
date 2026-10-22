@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 import { Bell, Menu, Search } from "lucide-react";
-import { useData } from "@/context/DataContext";
-import { CURRENT_USER_ID } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 import { Avatar } from "@/components/ui/Avatar";
 import { ThemeToggle } from "./ThemeToggle";
 import { LogoMark } from "./Logo";
 
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { users, roles } = useData();
-  const me = users.find((u) => u.id === CURRENT_USER_ID);
-  const myRole = roles.find((r) => me?.roleIds.includes(r.id));
+  // La identidad viene de la sesión real (claims del JWT + GET /api/users/{id}).
+  const { user: me } = useAuth();
+  const roleLabel = me?.roleNames[0];
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-zinc-200 bg-white/85 px-4 backdrop-blur sm:px-6 dark:border-zinc-800 dark:bg-black/85">
@@ -47,10 +46,10 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
             href="/perfil"
             className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-zinc-100 dark:hover:bg-zinc-900"
           >
-            <Avatar name={me.name} src={me.avatarUrl} size="sm" />
+            <Avatar name={me.name} size="sm" />
             <span className="hidden text-left leading-tight sm:block">
               <span className="block text-sm font-medium">{me.name}</span>
-              <span className="block text-xs text-zinc-500">{myRole?.name ?? "Sin rol"}</span>
+              <span className="block text-xs text-zinc-500">{roleLabel ?? "Sin rol"}</span>
             </span>
           </Link>
         )}

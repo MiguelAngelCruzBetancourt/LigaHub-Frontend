@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Camera, Mail, Phone, Save, Trash, Upload } from "lucide-react";
+import { CalendarDays, Camera, Mail, Phone, Save, Trash, Upload } from "lucide-react";
 import type { User } from "@/types";
+import { describeError } from "@/lib/api/http";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -10,14 +11,19 @@ import { Input } from "@/components/ui/Field";
 
 interface ProfileFormProps {
   user: User;
-  onSave: (patch: { phone: string; avatarUrl?: string }) => void;
+  /** Fecha ya registrada en el perfil del backend, si existe. */
+  birthDate?: string;
+  onSave: (patch: { phone: string; birthDate: string; avatarUrl?: string }) => void | Promise<void>;
 }
 
-/** Formulario de perfil (HU-SE-02): solo edita teléfono y fotografía. */
-export function ProfileForm({ user, onSave }: ProfileFormProps) {
+/** Formulario de perfil: teléfono, fecha de nacimiento y fotografía. */
+export function ProfileForm({ user, birthDate: initialBirthDate, onSave }: ProfileFormProps) {
   const [phone, setPhone] = useState(user.phone);
+  const [birthDate, setBirthDate] = useState(initialBirthDate ?? "");
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [error, setError] = useState<string>();
+  const [dateError, setDateError] = useState<string>();
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -25,7 +31,12 @@ export function ProfileForm({ user, onSave }: ProfileFormProps) {
     setAvatarUrl(user.avatarUrl);
   }, [user]);
 
-  const dirty = phone !== user.phone || avatarUrl !== user.avatarUrl;
+  useEffect(() => {
+    setBirthDate(initialBirthDate ?? "");
+  }, [initialBirthDate]);
+
+  const dirty =
+    phone !== user.phone || avatarUrl !== user.avatarUrl || birthDate !== (initialBirthDate ?? "");
 
   const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -41,14 +52,34 @@ export function ProfileForm({ user, onSave }: ProfileFormProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!/^[+\d\s()-]{7,}$/.test(phone)) {
       setError("Ingresa un teléfono válido, ej. +57 300 123 4567.");
       return;
     }
+    // El perfil del backend exige teléfono y fecha de nacimiento juntos.
+    if (!birthDate) {
+      setError(undefined);
+      setDateError("Indica tu fecha de nacimiento para poder guardar el perfil.");
+      return;
+    }
+    if (new Date(birthDate) >= new Date()) {
+      setError(undefined);
+      setDateError("La fecha de nacimiento debe estar en el pasado.");
+      return;
+    }
+
     setError(undefined);
-    onSave({ phone, avatarUrl });
+    setDateError(undefined);
+    setSaving(true);
+    try {
+      await onSave({ phone, birthDate, avatarUrl });
+    } catch (caught) {
+      setError(describeError(caught, "No se pudo guardar el perfil."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -83,34 +114,46 @@ export function ProfileForm({ user, onSave }: ProfileFormProps) {
       </Card>
 
       <Card className="lg:col-span-2">
-        <CardHeader title="Datos de contacto" description="Solo el teléfono es editable desde tu perfil." icon={<Phone />} />
+        <CardHeader
+          title="Datos de contacto"
+          description="Teléfono y fecha de nacimiento son editables desde tu perfil."
+          icon={<Phone />}
+        />
         <div className="grid gap-4 p-6 sm:grid-cols-2">
           <Input label="Nombre" value={user.name} disabled />
           <Input label="Correo electrónico" value={user.email} icon={<Mail />} disabled hint="Gestionado por el administrador." />
-          <div className="sm:col-span-2">
-            <Input
-              label="Teléfono"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              icon={<Phone />}
-              placeholder="+57 300 123 4567"
-              error={error}
-            />
-          </div>
+          <Input
+            label="Teléfono"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            icon={<Phone />}
+            placeholder="+57 300 123 4567"
+            error={error}
+          />
+          <Input
+            label="Fecha de nacimiento"
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            icon={<CalendarDays />}
+            error={dateError}
+          />
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <Button
             variant="secondary"
-            disabled={!dirty}
+            disabled={!dirty || saving}
             onClick={() => {
               setPhone(user.phone);
+              setBirthDate(initialBirthDate ?? "");
               setAvatarUrl(user.avatarUrl);
               setError(undefined);
+              setDateError(undefined);
             }}
           >
             Descartar
           </Button>
-          <Button type="submit" disabled={!dirty} leftIcon={<Save className="size-4" />}>
+          <Button type="submit" disabled={!dirty} loading={saving} leftIcon={<Save className="size-4" />}>
             Guardar perfil
           </Button>
         </div>

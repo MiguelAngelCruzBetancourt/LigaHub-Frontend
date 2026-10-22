@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Operation, Permission } from "@/types";
 import { OPERATIONS } from "@/lib/constants";
 import { useData } from "@/context/DataContext";
@@ -11,12 +11,12 @@ export type CellKey = `${string}:${Operation}`;
 export const cellKey = (moduleId: string, op: Operation): CellKey => `${moduleId}:${op}`;
 
 /**
- * Lógica de la matriz de permisos (HU-SE-06).
+ * Lógica de la matriz de permisos.
  * Mantiene una copia de trabajo de las celdas marcadas para el rol seleccionado,
  * calcula los cambios pendientes y los persiste en el store mock al guardar.
  */
 export function usePermissionMatrix(roleId: string) {
-  const { modules, permissions, rolePermissions, setRolePermissions } = useData();
+  const { modules: allModules, permissions, rolePermissions, setRolePermissions } = useData();
 
   // Permisos registrados agrupados por celda (puede haber varios endpoints por módulo/operación).
   const permissionsByCell = useMemo(() => {
@@ -39,10 +39,27 @@ export function usePermissionMatrix(roleId: string) {
 
   const [draft, setDraft] = useState<Set<CellKey>>(savedCells);
 
-  // Al cambiar de rol (o tras guardar) se reinicia la copia de trabajo.
-  useEffect(() => setDraft(new Set(savedCells)), [savedCells]);
+  /**
+   * Firma del conjunto guardado. Al venir de la API, `savedCells` cambia de
+   * identidad en cada recarga aunque su contenido sea el mismo; comparar la
+   * firma evita que un refetch borre los cambios sin guardar.
+   */
+  const savedSignature = useMemo(() => [...savedCells].sort().join("|"), [savedCells]);
+  const lastSignature = useRef(savedSignature);
+
+  useEffect(() => {
+    if (lastSignature.current === savedSignature) return;
+    lastSignature.current = savedSignature;
+    setDraft(new Set(savedCells));
+  }, [savedSignature, savedCells]);
 
   const isAvailable = useCallback((key: CellKey) => permissionsByCell.has(key), [permissionsByCell]);
+
+  /** Solo se muestran los módulos que tienen al menos un permiso registrado. */
+  const modules = useMemo(
+    () => allModules.filter((module) => OPERATIONS.some((op) => isAvailable(cellKey(module.id, op.id)))),
+    [allModules, isAvailable],
+  );
 
   const toggle = useCallback(
     (moduleId: string, op: Operation) => {
@@ -119,9 +136,9 @@ export function usePermissionMatrix(roleId: string) {
 
   const reset = useCallback(() => setDraft(new Set(savedCells)), [savedCells]);
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
     const ids = [...draft].flatMap((k) => (permissionsByCell.get(k) ?? []).map((p) => p.id));
-    setRolePermissions(roleId, ids);
+    await setRolePermissions(roleId, ids);
   }, [draft, permissionsByCell, roleId, setRolePermissions]);
 
   return {

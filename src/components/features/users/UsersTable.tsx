@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Pencil, Power, Trash } from "lucide-react";
+import { Eye, Pencil, Power, Trash, UserCog } from "lucide-react";
 import type { Role, User } from "@/types";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,12 +12,14 @@ interface UsersTableProps {
   users: User[];
   roles: Role[];
   onView: (user: User) => void;
+  /** Lleva a la gestión del perfil y los roles del usuario. */
+  onManage: (user: User) => void;
   onEdit: (user: User) => void;
   onToggleStatus: (user: User) => void;
   onDelete: (user: User) => void;
 }
 
-export function UsersTable({ users, roles, onView, onEdit, onToggleStatus, onDelete }: UsersTableProps) {
+export function UsersTable({ users, roles, onView, onManage, onEdit, onToggleStatus, onDelete }: UsersTableProps) {
   const roleName = (id: string) => roles.find((r) => r.id === id)?.name ?? id;
 
   const columns: Column<User>[] = [
@@ -71,6 +73,9 @@ export function UsersTable({ users, roles, onView, onEdit, onToggleStatus, onDel
         <div className="flex justify-end gap-0.5">
           <IconButton label="Ver detalle" onClick={() => onView(u)}>
             <Eye />
+          </IconButton>
+          <IconButton label="Perfil y roles" onClick={() => onManage(u)}>
+            <UserCog />
           </IconButton>
           <IconButton label="Editar" tone="blue" onClick={() => onEdit(u)}>
             <Pencil />

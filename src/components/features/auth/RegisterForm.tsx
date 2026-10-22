@@ -3,18 +3,20 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CircleCheck, Mail, User as UserIcon } from "lucide-react";
+import { CircleCheck, Mail, TriangleAlert, User as UserIcon } from "lucide-react";
+import { PASSWORD_HINT, PASSWORD_PATTERN } from "@/lib/constants";
+import { authApi } from "@/lib/api/auth";
+import { describeError } from "@/lib/api/http";
 import { Input } from "@/components/ui/Field";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PasswordStrength } from "@/components/ui/PasswordStrength";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { getPasswordStrength } from "@/utils/password";
 import { AuthDivider, AuthHeader, OAuthButtons } from "./OAuthButtons";
 
-type Errors = Partial<Record<"name" | "email" | "password" | "confirm" | "terms", string>>;
+type Errors = Partial<Record<"name" | "email" | "password" | "confirm" | "terms" | "form", string>>;
 
-/** HU-SE-08 · Registro con validación visual de seguridad de contraseña. */
+/** Registro con validación visual de seguridad de contraseña. */
 export function RegisterForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -26,21 +28,27 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const errs: Errors = {};
     if (name.trim().length < 3) errs.name = "Ingresa tu nombre completo.";
     if (!/^\S+@\S+\.\S+$/.test(email)) errs.email = "Ingresa un correo válido.";
-    if (getPasswordStrength(password).score < 3) errs.password = "La contraseña es muy débil. Cumple más requisitos.";
+    // Misma regla que valida el backend (CreateUserDTO).
+    if (!PASSWORD_PATTERN.test(password)) errs.password = PASSWORD_HINT;
     if (confirm !== password) errs.confirm = "Las contraseñas no coinciden.";
     if (!terms) errs.terms = "Debes aceptar el reglamento del torneo.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authApi.register({ name: name.trim(), email: email.trim().toLowerCase(), password });
       setDone(true);
-    }, 900);
+    } catch (error) {
+      setErrors({ form: describeError(error, "No se pudo crear la cuenta. Inténtalo de nuevo.") });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (done) {
@@ -50,9 +58,14 @@ export function RegisterForm() {
           <CircleCheck className="size-8" />
         </span>
         <h1 className="text-2xl font-bold">¡Fichaje completado!</h1>
+        {/* Verificación por correo desactivada por ahora (no hay servicio de notificaciones):
         <p className="mt-2 text-sm text-zinc-500">
           Enviamos un correo de confirmación a <strong className="text-zinc-800 dark:text-zinc-200">{email}</strong>.
           Actívalo para entrar a la cancha.
+        </p> */}
+        <p className="mt-2 text-sm text-zinc-500">
+          Tu cuenta <strong className="text-zinc-800 dark:text-zinc-200">{email}</strong> fue creada. Ya puedes
+          iniciar sesión.
         </p>
         <LinkButton href="/login" size="lg" className="mt-8 w-full">
           Ir a iniciar sesión
@@ -69,6 +82,12 @@ export function RegisterForm() {
       <AuthDivider>o regístrate con tu correo</AuthDivider>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {errors.form && (
+          <div role="alert" className="flex items-center gap-2 rounded-lg border border-co-red/30 bg-co-red/10 px-3 py-2.5 text-sm text-co-red">
+            <TriangleAlert className="size-4 shrink-0" />
+            {errors.form}
+          </div>
+        )}
         <Input
           label="Nombre completo"
           autoComplete="name"

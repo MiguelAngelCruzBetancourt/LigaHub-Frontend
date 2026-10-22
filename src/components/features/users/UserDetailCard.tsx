@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CalendarDays, Mail, Phone, ShieldCheck } from "lucide-react";
 import type { Role, User } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -41,9 +42,9 @@ export function UserDetailCard({ user, roles }: { user: User; roles: Role[] }) {
           <dd className="flex flex-1 flex-wrap gap-1">
             {userRoles.length ? (
               userRoles.map((r) => (
-                <Badge key={r.id} tone="blue">
-                  {r.name}
-                </Badge>
+                <Link key={r.id} href={`/roles/${r.id}`} title="Gestionar rol">
+                  <Badge tone="blue">{r.name}</Badge>
+                </Link>
               ))
             ) : (
               <span className="text-zinc-500">Sin rol asignado</span>

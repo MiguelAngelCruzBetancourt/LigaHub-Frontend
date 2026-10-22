@@ -9,12 +9,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { TricolorBar } from "@/components/ui/TricolorBar";
-import { formatDate } from "@/utils/format";
-import { CURRENT_USER_ID } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardPage() {
   const { users, roles, permissions, rolePermissions } = useData();
-  const me = users.find((u) => u.id === CURRENT_USER_ID);
+  const { user: me } = useAuth();
   const active = users.filter((u) => u.status === "activo").length;
 
   const kpis = [
@@ -24,7 +23,8 @@ export default function DashboardPage() {
     { label: "Permisos", value: permissions.length, hint: "endpoints protegidos", icon: KeyRound, href: "/permisos" },
   ];
 
-  const recent = [...users].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  // El backend no guarda fecha de creación: el id autoincremental marca el orden de ingreso.
+  const recent = [...users].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 5);
 
   return (
     <>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
                   <Avatar name={u.name} src={u.avatarUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="text-xs text-zinc-500">{formatDate(u.createdAt)}</p>
+                    <p className="truncate text-xs text-zinc-500">{u.email}</p>
                   </div>
                   {u.status === "activo" ? <Badge tone="success">Activo</Badge> : <Badge tone="red">Inactivo</Badge>}
                 </Link>
@@ -125,16 +125,18 @@ export default function DashboardPage() {
           <div>
             <p className="font-semibold">Vistas de autenticación</p>
             <p className="text-sm text-zinc-500">
-              Pantallas de demostración (solo UI): login, registro, recuperación y verificación en dos pasos.
+              {/* 2FA desactivado por ahora: "login, registro, recuperación y verificación en dos pasos" */}
+              Pantallas de acceso: login, registro y recuperación.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/login" variant="accent">
               Ver login
             </LinkButton>
+            {/* 2FA desactivado por ahora:
             <LinkButton href="/verificar-2fa" variant="secondary">
               Ver 2FA
-            </LinkButton>
+            </LinkButton> */}
           </div>
         </div>
       </Card>

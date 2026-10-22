@@ -26,7 +26,8 @@ function PitchLines() {
 
 const features = [
   { icon: ShieldCheck, text: "Roles y permisos granulares por módulo" },
-  { icon: Goal, text: "Autenticación en dos pasos para el cuerpo técnico" },
+  // 2FA desactivado por ahora:
+  // { icon: Goal, text: "Autenticación en dos pasos para el cuerpo técnico" },
   { icon: Trophy, text: "Auditoría lista para torneos oficiales" },
 ];
 

@@ -8,7 +8,11 @@ export function initials(name: string) {
 }
 
 export function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("es-CO", {
+  // El backend no expone fecha de creación de usuario: puede llegar vacía.
+  if (!iso) return "—";
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("es-CO", {
     day: "2-digit",
     month: "short",
     year: "numeric",

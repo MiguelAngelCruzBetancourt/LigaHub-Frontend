@@ -38,7 +38,7 @@ function Stepper({ current }: { current: Step }) {
   );
 }
 
-/** HU-SE-09 · Recuperación de contraseña en pasos (simulado). */
+/** Recuperación de contraseña en pasos (simulado). */
 export function RecoverFlow() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");

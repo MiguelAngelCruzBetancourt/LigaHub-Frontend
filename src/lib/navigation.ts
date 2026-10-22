@@ -44,5 +44,6 @@ export const AUTH_LINKS = [
   { href: "/login", label: "Login" },
   { href: "/registro", label: "Registro" },
   { href: "/recuperar", label: "Recuperar clave" },
-  { href: "/verificar-2fa", label: "Verificación 2FA" },
+  // 2FA desactivado por ahora:
+  // { href: "/verificar-2fa", label: "Verificación 2FA" },
 ];

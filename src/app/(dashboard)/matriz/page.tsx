@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { PermissionMatrixView } from "@/components/features/matrix/PermissionMatrixView";
 
-/** HU-SE-06 · Matriz de asignación de permisos a roles. */
+/** Matriz de asignación de permisos a roles. */
 export default function MatrizPage() {
   // useSearchParams (?rol=) requiere un límite de Suspense en rutas pre-renderizadas.
   return (

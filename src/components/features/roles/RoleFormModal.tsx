@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Pencil, ShieldPlus } from "lucide-react";
+import { Pencil, ShieldPlus, TriangleAlert } from "lucide-react";
 import type { Role } from "@/types";
 import type { RoleInput } from "@/context/DataContext";
+import { describeError } from "@/lib/api/http";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
@@ -11,7 +12,8 @@ import { Input, Textarea } from "@/components/ui/Field";
 interface RoleFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: RoleInput) => void;
+  /** Puede ser asíncrono: el modal espera y solo cierra si no hubo error. */
+  onSubmit: (input: RoleInput) => void | Promise<void>;
   role?: Role;
   /** Nombres ya usados, para validar duplicados. */
   existingNames: string[];
@@ -20,16 +22,18 @@ interface RoleFormModalProps {
 export function RoleFormModal({ open, onClose, onSubmit, role, existingNames }: RoleFormModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; description?: string; form?: string }>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(role?.name ?? "");
     setDescription(role?.description ?? "");
     setErrors({});
+    setSubmitting(false);
   }, [open, role]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const errs: typeof errors = {};
     const trimmed = name.trim();
@@ -41,8 +45,17 @@ export function RoleFormModal({ open, onClose, onSubmit, role, existingNames }: 
     if (description.trim().length < 10) errs.description = "Describe el rol en al menos 10 caracteres.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    onSubmit({ name: trimmed, description: description.trim() });
-    onClose();
+
+    setSubmitting(true);
+    try {
+      await onSubmit({ name: trimmed, description: description.trim() });
+      onClose();
+    } catch (error) {
+      // Por ejemplo un 409 si el nombre ya existe en la base de datos.
+      setErrors({ form: describeError(error, "No se pudo guardar el rol.") });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -57,13 +70,22 @@ export function RoleFormModal({ open, onClose, onSubmit, role, existingNames }: 
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" form="role-form">
+          <Button type="submit" form="role-form" loading={submitting}>
             {role ? "Guardar cambios" : "Crear rol"}
           </Button>
         </>
       }
     >
       <form id="role-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {errors.form && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-co-red/30 bg-co-red/10 px-3 py-2.5 text-sm text-co-red"
+          >
+            <TriangleAlert className="size-4 shrink-0" />
+            {errors.form}
+          </div>
+        )}
         <Input
           label="Nombre del rol"
           placeholder="Ej. Preparador Físico"

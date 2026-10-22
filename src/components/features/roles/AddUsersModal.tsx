@@ -17,7 +17,8 @@ interface AddUsersModalProps {
   roleName: string;
   /** Usuarios que aún no tienen el rol. */
   available: User[];
-  onConfirm: (userIds: string[]) => void;
+  /** Puede ser asíncrono; el modal cierra de inmediato y el aviso lo da la página. */
+  onConfirm: (userIds: string[]) => void | Promise<void>;
 }
 
 export function AddUsersModal({ open, onClose, roleName, available, onConfirm }: AddUsersModalProps) {

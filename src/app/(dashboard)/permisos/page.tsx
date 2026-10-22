@@ -7,6 +7,7 @@ import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { OPERATION_LABEL } from "@/lib/constants";
+import { describeError } from "@/lib/api/http";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -16,9 +17,9 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PermissionsTable } from "@/components/features/permissions/PermissionsTable";
 import { PermissionFormModal } from "@/components/features/permissions/PermissionFormModal";
 
-/** HU-SE-05 · Catálogo de permisos. */
+/** Catálogo de permisos. */
 export default function PermisosPage() {
-  const { permissions, modules, createPermission, updatePermission, deletePermission } = useData();
+  const { permissions, modules, createPermission, updatePermission, deletePermission, loading } = useData();
   const { notify } = useToast();
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("todos");
@@ -40,7 +41,6 @@ export default function PermisosPage() {
   return (
     <>
       <PageHeader
-        eyebrow="HU-SE-05"
         title="Permisos"
         description="Catálogo de endpoints protegidos del sistema: el reglamento que luego se asigna a cada rol."
         actions={
@@ -54,7 +54,7 @@ export default function PermisosPage() {
         <CardHeader
           icon={<KeyRound />}
           title="Reglamento de acceso"
-          description={`${filtered.length} de ${permissions.length} permisos`}
+          description={loading ? "Cargando permisos…" : `${filtered.length} de ${permissions.length} permisos`}
           action={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <div className="sm:w-48">
@@ -83,12 +83,12 @@ export default function PermisosPage() {
         permission={form.payload}
         modules={modules}
         existing={permissions}
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
           if (form.payload) {
-            updatePermission(form.payload.id, input);
+            await updatePermission(form.payload.id, input);
             notify("Permiso actualizado.");
           } else {
-            createPermission(input);
+            await createPermission(input);
             notify("Permiso registrado. Ya puedes asignarlo en la matriz.");
           }
         }}
@@ -106,10 +106,14 @@ export default function PermisosPage() {
             retirará de todos los roles que lo tengan asignado.
           </>
         }
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!confirmDelete.payload) return;
-          deletePermission(confirmDelete.payload.id);
-          notify("Permiso eliminado.", "error");
+          try {
+            await deletePermission(confirmDelete.payload.id);
+            notify("Permiso eliminado.", "error");
+          } catch (error) {
+            notify(describeError(error, "No se pudo eliminar el permiso."), "error");
+          }
         }}
       />
     </>

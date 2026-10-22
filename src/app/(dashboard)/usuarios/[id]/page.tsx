@@ -18,7 +18,7 @@ import { UserFormModal } from "@/components/features/users/UserFormModal";
 
 export default function UsuarioDetallePage() {
   const { id } = useParams<{ id: string }>();
-  const { users, roles, modules, permissions, rolePermissions, updateUser } = useData();
+  const { users, roles, modules, permissions, rolePermissions, updateUser, loading } = useData();
   const { notify } = useToast();
   const form = useDisclosure();
 
@@ -37,7 +37,9 @@ export default function UsuarioDetallePage() {
   }, [user, modules, permissions, rolePermissions]);
 
   if (!user) {
-    return (
+    return loading ? (
+      <EmptyState title="Cargando usuario…" description="Consultando los datos en el servidor." />
+    ) : (
       <EmptyState
         title="Usuario no encontrado"
         description="Puede que haya sido eliminado de la plantilla."
@@ -63,7 +65,7 @@ export default function UsuarioDetallePage() {
         description="Ficha técnica completa del integrante."
         actions={
           <Button leftIcon={<Pencil className="size-4" />} onClick={() => form.open()}>
-            Editar
+            Editar perfil y roles
           </Button>
         }
       />
@@ -104,8 +106,8 @@ export default function UsuarioDetallePage() {
         onClose={form.close}
         user={user}
         roles={roles}
-        onSubmit={(input) => {
-          updateUser(user.id, input);
+        onSubmit={async (input) => {
+          await updateUser(user.id, input);
           notify("Ficha actualizada.");
         }}
       />

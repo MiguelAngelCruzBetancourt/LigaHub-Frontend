@@ -13,7 +13,7 @@ interface RoleUsersPanelProps {
   canAdd: boolean;
 }
 
-/** Sub-panel de HU-SE-04: usuarios que tienen el rol. */
+/** Sub-panel del rol: usuarios que tienen el rol. */
 export function RoleUsersPanel({ users, onAdd, onRemove, canAdd }: RoleUsersPanelProps) {
   return (
     <Card className="overflow-hidden">

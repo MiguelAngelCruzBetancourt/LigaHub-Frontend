@@ -7,6 +7,7 @@ import type { Role } from "@/types";
 import { useData } from "@/context/DataContext";
 import { useToast } from "@/context/ToastContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
+import { describeError } from "@/lib/api/http";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -15,10 +16,10 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RolesTable, type RoleRow } from "@/components/features/roles/RolesTable";
 import { RoleFormModal } from "@/components/features/roles/RoleFormModal";
 
-/** HU-SE-03 · Gestión de roles. */
+/** Gestión de roles. */
 export default function RolesPage() {
   const router = useRouter();
-  const { roles, users, rolePermissions, createRole, updateRole, deleteRole } = useData();
+  const { roles, users, rolePermissions, createRole, updateRole, deleteRole, loading } = useData();
   const { notify } = useToast();
   const [query, setQuery] = useState("");
   const form = useDisclosure<Role>();
@@ -42,7 +43,6 @@ export default function RolesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="HU-SE-03"
         title="Roles"
         description="Define las posiciones del sistema: cada rol agrupa permisos que luego se asignan a usuarios."
         actions={
@@ -56,7 +56,7 @@ export default function RolesPage() {
         <CardHeader
           icon={<ShieldCheck />}
           title="Alineación de roles"
-          description={`${roles.length} roles registrados`}
+          description={loading ? "Cargando roles…" : `${roles.length} roles registrados`}
           action={<SearchInput value={query} onChange={setQuery} placeholder="Buscar rol" />}
         />
         <RolesTable
@@ -72,12 +72,12 @@ export default function RolesPage() {
         onClose={form.close}
         role={form.payload}
         existingNames={roles.map((r) => r.name)}
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
           if (form.payload) {
-            updateRole(form.payload.id, input);
+            await updateRole(form.payload.id, input);
             notify(`Rol “${input.name}” actualizado.`);
           } else {
-            createRole(input);
+            await createRole(input);
             notify(`Rol “${input.name}” creado. Ahora asígnale permisos en la matriz.`);
           }
         }}
@@ -100,11 +100,15 @@ export default function RolesPage() {
             . Sus permisos asignados también se perderán.
           </>
         }
-        onConfirm={() => {
+        onConfirm={async () => {
           const r = confirmDelete.payload;
           if (!r) return;
-          deleteRole(r.id);
-          notify(`Rol “${r.name}” eliminado.`, "error");
+          try {
+            await deleteRole(r.id);
+            notify(`Rol “${r.name}” eliminado.`, "error");
+          } catch (error) {
+            notify(describeError(error, "No se pudo eliminar el rol."), "error");
+          }
         }}
       />
     </>

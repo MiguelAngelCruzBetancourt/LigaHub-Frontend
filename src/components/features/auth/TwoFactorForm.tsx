@@ -11,7 +11,7 @@ import { AuthHeader } from "./OAuthButtons";
 const DEMO_CODE = "123456";
 const RESEND_SECONDS = 30;
 
-/** HU-SE-10 · Segundo factor de autenticación (código de 6 dígitos, simulado). */
+/** Segundo factor de autenticación (código de 6 dígitos, simulado). */
 export function TwoFactorForm() {
   const router = useRouter();
   const [code, setCode] = useState("");

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, themeInitScript } from "@/context/ThemeContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { DataProvider } from "@/context/DataContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <ThemeProvider>
           <ToastProvider>
-            <DataProvider>{children}</DataProvider>
+            <AuthProvider>
+              <DataProvider>{children}</DataProvider>
+            </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>
