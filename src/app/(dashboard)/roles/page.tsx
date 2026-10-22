@@ -89,16 +89,18 @@ export default function RolesPage() {
         title="Eliminar rol"
         confirmLabel="Eliminar rol"
         message={
-          <>
-            Se eliminará el rol <strong>{confirmDelete.payload?.name}</strong>
-            {deletingUsers > 0 && (
-              <>
-                {" "}
-                y se retirará de <strong>{deletingUsers} usuario(s)</strong>
-              </>
-            )}
-            . Sus permisos asignados también se perderán.
-          </>
+          deletingUsers > 0 ? (
+            <>
+              El rol <strong>{confirmDelete.payload?.name}</strong> está asignado a{" "}
+              <strong>{deletingUsers} usuario(s)</strong> y no se puede eliminar. Retira primero a esos usuarios
+              desde el detalle del rol.
+            </>
+          ) : (
+            <>
+              Se eliminará el rol <strong>{confirmDelete.payload?.name}</strong> y se desligarán sus permisos. Los
+              usuarios y los permisos del sistema no se eliminan.
+            </>
+          )
         }
         onConfirm={async () => {
           const r = confirmDelete.payload;

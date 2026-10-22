@@ -1,4 +1,4 @@
-# GolAdmin · Frontend de gestión (Next.js)
+# LigaHub · Frontend de gestión (Next.js)
 
 Panel de administración con temática de fútbol para gestionar **usuarios, roles, permisos** y la **matriz de permisos por rol**, además de las vistas de autenticación. Es **solo UI**: no hay backend ni autenticación real. Todos los datos son mock y viven en el estado de React (`DataContext`), así que se reinician al recargar la página.
 

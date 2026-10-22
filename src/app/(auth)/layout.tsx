@@ -63,7 +63,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               ))}
             </ul>
           </div>
-          <p className="text-xs text-zinc-500">© 2026 GolAdmin · Hecho con pasión cafetera 🇨🇴</p>
+          <p className="text-xs text-zinc-500">© 2026 LigaHub · Hecho con pasión cafetera 🇨🇴</p>
         </div>
       </aside>
 

@@ -59,7 +59,7 @@ export function PermissionFormModal({ open, onClose, onSubmit, permission, exist
     const model = values.model.trim();
     if (!model) errs.model = "Indica el modelo o recurso.";
     else if (model.length > 255) errs.model = "El modelo no puede superar 255 caracteres.";
-    if (!/^\/[\w\-/:{}]*$/.test(values.url)) errs.url = "La URL debe iniciar con “/”, ej. /api/partidos/:id";
+    if (!/^\/[\w\-/:{}]*$/.test(values.url)) errs.url = "La URL debe iniciar con “/”, ej. /api/partidos/{id}";
     else if (
       existing.some((p) => p.id !== permission?.id && p.url === values.url && p.method === values.method)
     )
@@ -157,7 +157,7 @@ export function PermissionFormModal({ open, onClose, onSubmit, permission, exist
           />
           <Input
             label="URL"
-            placeholder="/api/partidos/:id"
+            placeholder="/api/partidos/{id}"
             icon={<Link2 />}
             className="font-mono"
             value={values.url}

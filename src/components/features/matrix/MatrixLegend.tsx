@@ -11,6 +11,12 @@ export function MatrixLegend() {
         Asignado
       </li>
       <li className="flex items-center gap-2">
+        <span className="flex size-4 items-center justify-center rounded border-2 border-co-blue text-co-blue dark:border-co-yellow dark:text-co-yellow">
+          <span className="h-0.5 w-2 rounded bg-current" />
+        </span>
+        Parcial (solo algunos endpoints)
+      </li>
+      <li className="flex items-center gap-2">
         <span className="size-4 rounded border-2 border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-950" />
         Sin asignar
       </li>

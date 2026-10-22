@@ -16,6 +16,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PermissionsTable } from "@/components/features/permissions/PermissionsTable";
 import { PermissionFormModal } from "@/components/features/permissions/PermissionFormModal";
+import { PermissionDetailModal } from "@/components/features/permissions/PermissionDetailModal";
 
 /** Catálogo de permisos. */
 export default function PermisosPage() {
@@ -24,6 +25,7 @@ export default function PermisosPage() {
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("todos");
   const form = useDisclosure<Permission>();
+  const detail = useDisclosure<Permission>();
   const confirmDelete = useDisclosure<Permission>();
 
   const filtered = useMemo(() => {
@@ -76,10 +78,18 @@ export default function PermisosPage() {
         <PermissionsTable
           permissions={filtered}
           modules={modules}
+          onView={(p) => detail.open(p)}
           onEdit={(p) => form.open(p)}
           onDelete={(p) => confirmDelete.open(p)}
         />
       </Card>
+
+      <PermissionDetailModal
+        open={detail.isOpen}
+        onClose={detail.close}
+        permission={detail.payload}
+        modules={modules}
+      />
 
       <PermissionFormModal
         open={form.isOpen}
@@ -105,8 +115,8 @@ export default function PermisosPage() {
         message={
           <>
             Se eliminará <strong>{describe(confirmDelete.payload)}</strong> (
-            <code className="font-mono">{confirmDelete.payload?.method} {confirmDelete.payload?.url}</code>) y se
-            retirará de todos los roles que lo tengan asignado.
+            <code className="font-mono">{confirmDelete.payload?.method} {confirmDelete.payload?.url}</code>). Si está
+            asignado a algún rol, el sistema no lo eliminará: retíralo antes desde la matriz. Los roles no se eliminan.
           </>
         }
         onConfirm={async () => {

@@ -15,7 +15,7 @@ import { authApi } from "@/lib/api/auth";
 import { ApiError, configureHttp } from "@/lib/api/http";
 import { decodeJwtPayload } from "@/lib/jwt";
 
-const STORAGE_KEY = "futbol-admin-session";
+const STORAGE_KEY = "ligahub-session";
 
 /** Lo que persistimos del login. El backend no tiene refresh token. */
 interface StoredSession {

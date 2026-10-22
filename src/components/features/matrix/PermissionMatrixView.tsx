@@ -113,6 +113,7 @@ export function PermissionMatrixView() {
           groups={matrix.groups}
           draft={matrix.draft}
           isAvailable={matrix.isAvailable}
+          isPartial={matrix.isPartial}
           isPending={matrix.isPending}
           rowState={matrix.rowState}
           columnState={matrix.columnState}

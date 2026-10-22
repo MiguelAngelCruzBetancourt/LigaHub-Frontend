@@ -152,7 +152,7 @@ export default function RolDetallePage() {
         open={confirmRemove.isOpen}
         onClose={confirmRemove.close}
         title="Remover usuario del rol"
-        confirmLabel="Sustituir: remover"
+        confirmLabel="Remover del rol"
         message={
           <>
             ¿Deseas remover a <strong>{confirmRemove.payload?.name}</strong> del rol <strong>{role.name}</strong>?

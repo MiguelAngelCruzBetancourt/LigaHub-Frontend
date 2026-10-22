@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash } from "lucide-react";
+import { Eye, Pencil, Trash } from "lucide-react";
 import type { Permission, SystemModule } from "@/types";
 import { OPERATION_LABEL } from "@/lib/constants";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -12,11 +12,12 @@ import { MethodBadge } from "./MethodBadge";
 interface PermissionsTableProps {
   permissions: Permission[];
   modules: SystemModule[];
+  onView: (p: Permission) => void;
   onEdit: (p: Permission) => void;
   onDelete: (p: Permission) => void;
 }
 
-export function PermissionsTable({ permissions, modules, onEdit, onDelete }: PermissionsTableProps) {
+export function PermissionsTable({ permissions, modules, onView, onEdit, onDelete }: PermissionsTableProps) {
   const moduleById = (id: string) => modules.find((m) => m.id === id);
 
   const columns: Column<Permission>[] = [
@@ -59,6 +60,9 @@ export function PermissionsTable({ permissions, modules, onEdit, onDelete }: Per
       className: "text-right",
       cell: (p) => (
         <div className="flex justify-end gap-0.5">
+          <IconButton label="Ver detalle" onClick={() => onView(p)}>
+            <Eye />
+          </IconButton>
           <IconButton label="Editar" tone="blue" onClick={() => onEdit(p)}>
             <Pencil />
           </IconButton>

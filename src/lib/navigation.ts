@@ -38,7 +38,6 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/matriz",
         label: "Matriz de permisos",
         icon: Grid3x3,
-        badge: "Clave",
         requires: (a) => a.hasModule("m-roles-permisos"),
       },
     ],

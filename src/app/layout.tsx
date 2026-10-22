@@ -9,7 +9,7 @@ import { DataProvider } from "@/context/DataContext";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Gol Admin · Gestión deportiva",
+  title: "LigaHub · Gestión deportiva",
   description: "Panel de administración de usuarios, roles y permisos para la plataforma de fútbol.",
 };
 
@@ -19,7 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="font-sans">
+      {/* Las extensiones del navegador (p. ej. ColorZilla) añaden atributos al body antes de hidratar. */}
+      <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>

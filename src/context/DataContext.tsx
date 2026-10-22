@@ -330,11 +330,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addUsersToRole = useCallback(
     async (roleId: string, userIds: string[]) => {
       const numericRoleId = toBackendId(roleId);
-      for (const userId of userIds) {
-        await userRolesApi.assign({ userId: toBackendId(userId), roleId: numericRoleId });
+      try {
+        for (const userId of userIds) {
+          await userRolesApi.assign({ userId: toBackendId(userId), roleId: numericRoleId });
+        }
+      } finally {
+        // Si una asignación falla a mitad, la UI debe mostrar lo realmente persistido.
+        await reloadUsers();
+        await refreshUser();
       }
-      await reloadUsers();
-      await refreshUser();
     },
     [reloadUsers, refreshUser],
   );
@@ -388,23 +392,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const next = new Set(permissionIds);
       const previous = new Set(rolePermissions[roleId] ?? []);
 
-      for (const permissionId of next) {
-        if (!previous.has(permissionId)) {
-          await rolePermissionsApi.assign({
-            roleId: numericRoleId,
-            permissionId: toBackendId(permissionId),
-          });
+      try {
+        for (const permissionId of next) {
+          if (!previous.has(permissionId)) {
+            await rolePermissionsApi.assign({
+              roleId: numericRoleId,
+              permissionId: toBackendId(permissionId),
+            });
+          }
         }
-      }
-      for (const permissionId of previous) {
-        if (!next.has(permissionId)) {
-          await rolePermissionsApi.remove(numericRoleId, toBackendId(permissionId));
+        for (const permissionId of previous) {
+          if (!next.has(permissionId)) {
+            await rolePermissionsApi.remove(numericRoleId, toBackendId(permissionId));
+          }
         }
+      } finally {
+        // Si algo falla a mitad, la matriz debe mostrar lo realmente persistido.
+        await reloadRolesAndMatrix();
+        // Si el rol editado es del propio usuario, sus permisos cambian al instante.
+        await refreshUser();
       }
-
-      await reloadRolesAndMatrix();
-      // Si el rol editado es del propio usuario, sus permisos cambian al instante.
-      await refreshUser();
     },
     [rolePermissions, reloadRolesAndMatrix, refreshUser],
   );

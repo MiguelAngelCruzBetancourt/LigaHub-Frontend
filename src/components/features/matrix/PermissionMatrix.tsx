@@ -16,6 +16,8 @@ export interface PermissionMatrixProps {
   groups: ModuleGroup[];
   draft: Set<CellKey>;
   isAvailable: (key: CellKey) => boolean;
+  /** El rol tiene solo algunos de los permisos de la celda. */
+  isPartial: (key: CellKey) => boolean;
   isPending: (key: CellKey) => boolean;
   rowState: (moduleId: string) => SelectionState;
   columnState: (op: Operation) => SelectionState;
@@ -34,6 +36,7 @@ export function PermissionMatrix({
   groups,
   draft,
   isAvailable,
+  isPartial,
   isPending,
   rowState,
   columnState,
@@ -167,6 +170,7 @@ export function PermissionMatrix({
                               srOnlyLabel
                               label={`${op.label} en ${m.name}`}
                               checked={draft.has(key)}
+                              indeterminate={isPartial(key)}
                               disabled={!available}
                               highlight={isPending(key)}
                               onChange={() => onToggle(m.id, op.id)}
